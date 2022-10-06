@@ -1,0 +1,8 @@
+<launch>
+<arg name = "port" default="$(env HUSKY_IMU_PORT)" />
+<node pkg="um7" type="um7_driver" name="imu_sensor">
+ <param name="port" type="string" value="$(arg port)" />
+ </node>
+ <include file = "$(find nmea_navsat_driver)/launch/nmea_serial_driver.launch"/>
+ <include file = "$(find ouster_ros)/launch/ouster.launch" />
+ </launch>
