@@ -1,0 +1,15 @@
+<launch>	
+	<node pkg="um7" type="um7_driver" name="imu_sensor">
+		<param name="port" type="string" value="$(env HUSKY_IMU_PORT)" />
+	</node>
+
+	<include file = "$(find ouster_ros)/launch/sensor.launch" >
+		<arg name = "sensor_hostname" value = "$(env HUSKY_LIDAR_IP)" />
+		<arg name = "udp_dest" value = "$(env HUSKY_LIDAR_IP_DEST)" />
+		<arg name = "viz" value = "false" />
+	</include>
+	
+	<include file = "$(find nmea_navsat_driver)/launch/nmea_serial_driver.launch"/>
+	
+	<include file = "$(find husky_manager)/launch/ekf_loc.launch" />
+ </launch>
