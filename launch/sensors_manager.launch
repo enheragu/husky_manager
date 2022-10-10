@@ -4,6 +4,8 @@
 	</node>
 
 	<include file = "$(find ouster_ros)/launch/sensor.launch" >
+		<arg name = "lidar_mode" value = "1024x10" doc="resolution and rate; possible vaules: { 512x10, 512x20, 1024x10, 1024x20, 2048x10, 4096x5 }"/>
+		<arg name="timestamp_mode" value = "TIME_FROM_PTP_1588" doc="method used to timestamp measurements; possible values: { TIME_FROM_INTERNAL_OSC, TIME_FROM_SYNC_PULSE_IN, TIME_FROM_PTP_1588, TIME_FROM_ROS_TIME }"/>
 		<arg name = "sensor_hostname" value = "$(env HUSKY_LIDAR_IP)" />
 		<arg name = "udp_dest" value = "$(env HUSKY_LIDAR_IP_DEST)" />
 		<arg name = "viz" value = "false" />
