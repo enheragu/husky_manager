@@ -23,4 +23,4 @@ obstacles_laser:
     ouster_point_cloud: {data_type: PointCloud2, clearing: true, marking: true, topic: ouster/points}
 
 inflation:
-    inflation_radius: 0.5
+    inflation_radius: 0.35
