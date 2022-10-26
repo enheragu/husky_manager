@@ -1,5 +1,6 @@
 <launch>	
 	<node pkg="um7" type="um7_driver" name="imu_sensor">
+		<param name="update_rate" type="int" value="50"/>
 		<param name="port" type="string" value="$(env HUSKY_IMU_PORT)" />
 	</node>
 
