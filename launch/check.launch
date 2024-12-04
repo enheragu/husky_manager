@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="husky_manager" type="check_sensors.py" name="check_sensors" output="screen"/>
+</launch>
