@@ -1,84 +1,125 @@
 #!/usr/bin/env python3
 # encoding: utf-8
+import shutil
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
 from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Image, CompressedImage
 import time
 
 from tabulate import tabulate
 
+class MonitorHz:
+    def __init__(self, friendly_name, topic, message_type):
+        self.friendly_name = friendly_name
+        self.topic = topic
+        self.message_type = message_type
+
+        self.frequency = "N/A"
+        self.history = []
+        self.history_window = 5
+        self.message_counts = 0
+
+        self.start_time = rospy.Time.now().to_sec()
+
+        self.sub = rospy.Subscriber(self.topic, self.message_type, self.callback)
+
+    def callback(self, msg):
+        self.message_counts += 1
+        current_time = rospy.Time.now().to_sec()
+        if current_time - self.start_time >= 1.0:
+            self.history.append(self.message_counts)
+            if len(self.history) > self.history_window:
+                self.history.pop(0)  # Averages only last N frequencies (N = history_window)
+            self.frequency = sum(self.history) / len(self.history)
+            self.message_counts = 0
+            self.start_time = current_time
+    
+    def getValue(self):
+        freq_msg = f"{self.frequency:.2f} Hz" if self.frequency != 'N/A' else self.frequency
+        return {self.friendly_name: [freq_msg]}
+
+
+class GPSMonitorHz(MonitorHz):
+     
+    def __init__(self, friendly_name, topic, message_type):
+        super().__init__(friendly_name, topic, message_type)
+        self.mode_gps = "N/A"
+        self.cov_gps = f"[N/A,N/A]"
+
+        self.gps_modes = {
+                '-1': "No Fix",
+                '0': "Fix",
+                '1': "SBAS Fix",
+                '2': "GBAS Fix"
+            }
+    def callback(self,msg):
+        super().callback(msg)
+        self.mode_gps = msg.status.status if str(msg.status.status) not in self.gps_modes.keys() else f"{self.gps_modes[str(msg.status.status)]} [{msg.status.status}]"
+        self.cov_gps = [msg.position_covariance[0], msg.position_covariance[4]]
+
+    def getValue(self):
+        data = super().getValue()
+        data.update({'Mode GPS': [self.mode_gps], 'COV GPS': [self.cov_gps]})
+        return data
+         
 # Define a callback function for each topic 
-class check():
+class Monitor():
     def __init__(self):
-        self.sub1=rospy.Subscriber("/ouster/points", PointCloud2, self.topic1_callback)
-        self.sub2=rospy.Subscriber("/gnss/fix", NavSatFix, self.topic2_callback)
-        self.sub3=rospy.Subscriber("/imu/data", Imu, self.topic3_callback)
-        self.message_counts = {
-            '/ouster/points': 0,
-            '/gnss/fix': 0,
-            '/imu/data': 0
-        }
-        self.start_time_lidar = time.time()
-        self.start_time_gps = time.time()
-        self.start_time_imu = time.time()
+        self.monitor_lidar = MonitorHz('F LIDAR (Hz)', "/ouster/points", PointCloud2)
+        self.monitor_gps = GPSMonitorHz('F GPS (Hz)', "/gnss/fix", NavSatFix)
+        self.monitor_imu = MonitorHz('F IMU (Hz)' ,"/imu/data", Imu)
 
-        self.topic_info = {'F LIDAR (Hz)': ["  None  "], 
-                           'F GPS (Hz)': ["  None  "], 
-                           'Mode GPS': ["  None  "], 
-                           'COV GPS': ["  (None,None)  "], 
-                           'F IMU (Hz)': ["  None  "]}
-
-    def topic1_callback(self,msg):
-        self.message_counts['/ouster/points']+=1
-        if time.time()-self.start_time_lidar>=1:
-            self.topic_info['F LIDAR (Hz)'] = [self.message_counts['/ouster/points']]
-            self.start_time_lidar = time.time()
-            self.message_counts['/ouster/points'] = 0
-
-    def topic2_callback(self,msg):
-        self.message_counts['/gnss/fix']+=1
-        if time.time()-self.start_time_gps>=1:
-            self.topic_info['F GPS (Hz)'] = [self.message_counts['/gnss/fix']]
-            self.topic_info['Mode GPS'] = [msg.status.status]
-            self.topic_info['COV GPS'] = [(msg.position_covariance[0], msg.position_covariance[4])]
-            self.start_time_gps = time.time()
-            self.message_counts['/gnss/fix'] = 0
+        self.monitor_multiespectral_visible = MonitorHz('Mult. Visible', "/Multiespectral/visible_camera/compressed", CompressedImage)
+        self.monitor_multiespectral_lwir = MonitorHz('Mult. Lwir', "/Multiespectral/lwir_camera/compressed", CompressedImage)
+        self.monitor_fisheye_frontal = MonitorHz('Fish. Frontal', "/Fisheye/frontal_camera/compressed", CompressedImage)
+        self.monitor_fisheye_rear = MonitorHz('Fish. Rear', "/Fisheye/rear_camera/compressed", CompressedImage)
 
 
-    def topic3_callback(self,msg):
-        self.message_counts['/imu/data']+=1
-        if time.time()-self.start_time_imu>=1:
-            self.topic_info['F IMU (Hz)'] = [self.message_counts['/imu/data']]
-            self.start_time_imu = time.time()
-            self.message_counts[ '/imu/data'] = 0
+    def updateTable(self):
+        dict_data = {}
+        dict_data.update(self.monitor_lidar.getValue())
+        dict_data.update(self.monitor_gps.getValue())
+        dict_data.update(self.monitor_imu.getValue())
+        
+        camera_data = {}
+        camera_data.update(self.monitor_multiespectral_visible.getValue())
+        camera_data.update(self.monitor_multiespectral_lwir.getValue())
+        camera_data.update(self.monitor_fisheye_frontal.getValue())
+        camera_data.update(self.monitor_fisheye_rear.getValue())
 
-    def print_titles(self):
-        formated_table = tabulate(self.topic_info, headers="keys", numalign=("center"))
-        lines = formated_table.splitlines()
-        print("\n")
-        print(f"\033[96m{'-'*len(lines[1])}\033[0m")
-        print(f"\033[96m {lines[0]}\033[0m")
-        print(f"\033[96m{'-'*len(lines[1])}\033[0m")
-        # print(lines[2], end="", flush=True)
+        formated_table = tabulate(dict_data, headers="keys", numalign="center", tablefmt="pretty")
+        camera_table = tabulate(camera_data, headers="keys", numalign="center", tablefmt="pretty")
 
-    def update_print(self):
-        formated_table = tabulate(self.topic_info, headers="keys", numalign=("center"))
-        endl = f"{formated_table.splitlines()[-1]}"
-        print("\r"+" "*60, end="", flush=True)
-        print(f"\033[96m\r{endl}\033[0m", end="", flush=True)
+        terminal_width = shutil.get_terminal_size().columns
+        lines = formated_table.splitlines() + [""] + camera_table.splitlines()
+        
+        print("\033[H\033[J", end="")
+        print("\n\033[96mRobot sensor stauts summary:\n\033[0m")
+        for line in lines:
+            print(f"\033[96m{line.center(terminal_width)}\033[0m")
+        
+        print(f"\033[{len(lines)}A", end="", flush=True)
+        
 
+        # Log for conky GUI :)
+        for file, data in [("/tmp/husky_sensor_status.txt", dict_data), ("/tmp/husky_cameras_status.txt", camera_data)]:
+            with open(file, "w") as f:
+                for key, value in data.items():
+                    f.write(f"{key}: {value[0]}\n")
+
+                
 if __name__ == '__main__':
     # Initialize the ROS node
     rospy.init_node('frequency_checker')
-    check_obj = check()
+    check_obj = Monitor()
 
     rate = rospy.Rate(1) # ROS Rate at 5Hz
 
-    check_obj.print_titles()
     while not rospy.is_shutdown():
-        check_obj.update_print()
+        check_obj.updateTable()
         rate.sleep()
 

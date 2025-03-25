@@ -1,32 +1,37 @@
-<launch>	
+<launch>
 	<node pkg="um7" type="um7_driver" name="imu_sensor">
-		<param name="port" type="string" value="$(env HUSKY_IMU_PORT)" />
+		<param name="port" type="string" value="$(env HUSKY_IMU_PORT)" /> 
+		<!-- <param name="port" type="string" value="/dev/ttyUSB1"/> -->
 		<param name="orientation_in_robot_frame" type="bool" value="true"/>
 		<param name="tf_ned_to_enu" type="bool" value="false"/>
-		<param name="linear_acceleration_stdev" type="double" value="0.15"/>
+		<!-- <param name="linear_acceleration_stdev" type="double" value="0.15"/> -->
 	</node>
-	
-	<include file = "$(find camera_aravis)/launch/camera_aravis.launch"/>
+
+	<!-- <include file = "$(find camera_aravis)/launch/camera_aravis.launch"/> -->
+	<!-- <include file = "$(find pylon_camera)/launch/pylon_camera_node.launch"/> -->
 
 	<include file = "$(find ouster_ros)/launch/sensor.launch" >
-		<arg name = "lidar_mode" value = "1024x10" doc="resolution and rate; possible vaules: { 512x10, 512x20, 1024x10, 1024x20, 2048x10, 4096x5 }"/>
+		<arg name = "lidar_mode" value = "2048x10" doc="resolution and rate; possible vaules: { 512x10, 512x20, 1024x10, 1024x20, 2048x10, 4096x5 }"/>
 		<arg name="timestamp_mode" value = "TIME_FROM_PTP_1588" doc="method used to timestamp measurements; possible values: { TIME_FROM_INTERNAL_OSC, TIME_FROM_SYNC_PULSE_IN, TIME_FROM_PTP_1588, TIME_FROM_ROS_TIME }"/>
 		<arg name = "sensor_hostname" value = "$(env HUSKY_LIDAR_IP)" />
 		<arg name = "udp_dest" value = "$(env HUSKY_LIDAR_IP_DEST)" />
 		<arg name = "viz" value = "false" />
 	</include>
+	<group ns="ouster">
+		<node pkg="husky_manager" type="image3D.py" name="image3D" output="screen"/>
+		
+		<node pkg="topic_tools" type="throttle" name="throttle_points" args="messages /ouster/points 2.5 /ouster/points_low_rate" output="screen" />
+		<node pkg="topic_tools" type="throttle" name="throttle_image3d" args="messages /ouster/image3d 2.5 /ouster/image3d_low_rate" output="screen" />
+	</group>
 	
 	<include file = "$(find nmea_navsat_driver)/launch/nmea_serial_driver.launch">
 		<arg name = "frame_id" value = "gps_link"/>
 	</include>
-	
-	<include file = "$(find husky_manager)/launch/ekf_loc.launch" />
-	
-	<node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform_node" clear_params="true">
-              <rosparam command="load" file="$(find robot_localization)/params/navsat_transform_template.yaml" /> -->
-	      <!--Placeholders for input remapping. Set your topic names as the "to" values.  -->
-	      <!-- <remap from="imu/data" to=""/> -->
-	      <remap from="odometry/filtered" to="odometry/filtered_map"/> 
-	      <remap from="gps/fix" to="/fix"/>
-        </node>
+
+  	<!-- <node name="gnss_odom_node" pkg="gnss_odom" type="gnss_odom" output="screen">
+		<param name="cmd_vel_topic" value="husky_velocity_controller/cmd_vel" />
+		<param name="fix_topic" value="gnss/fix" />
+		<param name="odom_pub_topic" value="gnss/odom" />
+	</node> -->
+
  </launch>
