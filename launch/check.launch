@@ -1,3 +1,5 @@
 <launch>
-	<node pkg="husky_manager" type="check_sensors.py" name="check_sensors" output="screen"/>
+    <arg name="node_name" default="check_sensors"/>
+    <arg name="output" default="screen"/>
+	<node pkg="husky_manager" type="check_sensors.py" name="$(arg node_name)" output="$(arg output)"/>
 </launch>

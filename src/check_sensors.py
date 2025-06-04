@@ -27,10 +27,14 @@ class MonitorHz:
 
         self.sub = rospy.Subscriber(self.topic, self.message_type, self.callback)
 
+        # Configure
+        self.reset_timeout = 3.0 # Timeout in seconds to reset the message counts and metrics
+        self.metric_update = 1.0 # Update the metrics every N seconds
+
     def callback(self, msg):
         self.message_counts += 1
         current_time = rospy.Time.now().to_sec()
-        if current_time - self.start_time >= 1.0:
+        if current_time - self.start_time >= self.metric_update:
             self.history.append(self.message_counts)
             if len(self.history) > self.history_window:
                 self.history.pop(0)  # Averages only last N frequencies (N = history_window)
@@ -39,6 +43,12 @@ class MonitorHz:
             self.start_time = current_time
     
     def getValue(self):
+        # Handle timetout and reset messages if callback was not called
+        current_time = rospy.Time.now().to_sec()
+        if current_time - self.start_time >= self.reset_timeout:
+            self.message_counts = 0
+            self.frequency = "N/A"
+
         freq_msg = f"{self.frequency:.2f} Hz" if self.frequency != 'N/A' else self.frequency
         return {self.friendly_name: [freq_msg]}
 
@@ -63,15 +73,21 @@ class GPSMonitorHz(MonitorHz):
 
     def getValue(self):
         data = super().getValue()
+        
+        # Handle timetout and reset messages if callback was not called
+        current_time = rospy.Time.now().to_sec()
+        if current_time - self.start_time >= self.reset_timeout:
+            self.mode_gps = "N/A"
+            self.cov_gps = f"[N/A,N/A]"
         data.update({'Mode GPS': [self.mode_gps], 'COV GPS': [self.cov_gps]})
         return data
          
 # Define a callback function for each topic 
 class Monitor():
     def __init__(self):
-        self.monitor_lidar = MonitorHz('F LIDAR (Hz)', "/ouster/points", PointCloud2)
-        self.monitor_gps = GPSMonitorHz('F GPS (Hz)', "/gnss/fix", NavSatFix)
-        self.monitor_imu = MonitorHz('F IMU (Hz)' ,"/imu/data", Imu)
+        self.monitor_lidar = MonitorHz('LIDAR', "/ouster/points", PointCloud2)
+        self.monitor_gps = GPSMonitorHz('GPS', "/gnss/fix", NavSatFix)
+        self.monitor_imu = MonitorHz('IMU' ,"/imu/data", Imu)
 
         self.monitor_multiespectral_visible = MonitorHz('Mult. Visible', "/Multiespectral/visible_camera/compressed", CompressedImage)
         self.monitor_multiespectral_lwir = MonitorHz('Mult. Lwir', "/Multiespectral/lwir_camera/compressed", CompressedImage)
