@@ -2,12 +2,13 @@
 # encoding: utf-8
 import shutil
 import rospy
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image, CompressedImage
+from multiespectral_acquire.msg import ImageWithMetadata
 import time
 
 from tabulate import tabulate
@@ -89,10 +90,17 @@ class Monitor():
         self.monitor_gps = GPSMonitorHz('GPS', "/gnss/fix", NavSatFix)
         self.monitor_imu = MonitorHz('IMU' ,"/imu/data", Imu)
 
-        self.monitor_multiespectral_visible = MonitorHz('Mult. Visible', "/Multiespectral/visible_camera/compressed", CompressedImage)
-        self.monitor_multiespectral_lwir = MonitorHz('Mult. Lwir', "/Multiespectral/lwir_camera/compressed", CompressedImage)
-        self.monitor_fisheye_frontal = MonitorHz('Fish. Frontal', "/Fisheye/frontal_camera/compressed", CompressedImage)
-        self.monitor_fisheye_rear = MonitorHz('Fish. Rear', "/Fisheye/rear_camera/compressed", CompressedImage)
+        self.monitor_multiespectral_visible = MonitorHz('Mult. Visible', "/Multiespectral/visible_camera/image_with_metadata_sync", ImageWithMetadata)
+        self.monitor_multiespectral_lwir = MonitorHz('Mult. Lwir', "/Multiespectral/lwir_camera/image_with_metadata_sync", ImageWithMetadata)
+        self.monitor_fisheye_frontal = MonitorHz('Fish. Frontal', "/Fisheye/frontal_camera/image_with_metadata_sync", ImageWithMetadata)
+        self.monitor_fisheye_rear = MonitorHz('Fish. Rear', "/Fisheye/rear_camera/image_with_metadata_sync", ImageWithMetadata)
+
+        # Monitor store status
+        self.recording_enabled = False
+        self.control_sub = rospy.Subscriber('/Multiespectral/recording_enabled', Bool, self.recording_control_callback)
+
+    def recording_control_callback(self, msg):
+        self.recording_enabled = msg.data
 
 
     def updateTable(self):
@@ -107,8 +115,15 @@ class Monitor():
         camera_data.update(self.monitor_fisheye_frontal.getValue())
         camera_data.update(self.monitor_fisheye_rear.getValue())
 
-        formated_table = tabulate(dict_data, headers="keys", numalign="center", tablefmt="pretty")
-        camera_table = tabulate(camera_data, headers="keys", numalign="center", tablefmt="pretty")
+        # Añadir estado de grabación multiespectral
+        if self.recording_enabled is not None:
+            camera_data['Store file'] = [str(self.recording_enabled)]
+        else:
+            camera_data['Store file'] = ['N/A']
+
+
+        formated_table = tabulate(dict_data, headers="keys", numalign="center", tablefmt="fancy_grid")
+        camera_table = tabulate(camera_data, headers="keys", numalign="center", tablefmt="fancy_grid")
 
         terminal_width = shutil.get_terminal_size().columns
         lines = formated_table.splitlines() + [""] + camera_table.splitlines()

@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -207,5 +207,13 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   ${CMAKE_CURRENT_LIST_DIR}/src/image3D.py
+  ${CMAKE_CURRENT_LIST_DIR}/scripts/web_manager_node.py
+  ${CMAKE_CURRENT_LIST_DIR}/scripts/check_sensors.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Install web_manager static files and templates
+install(DIRECTORY src/web_manager/
+  DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}/web_manager
+  PATTERN "__pycache__" EXCLUDE
 )

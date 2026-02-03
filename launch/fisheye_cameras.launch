@@ -1,18 +1,15 @@
 <launch>
-    <arg name="dataset_output_path" default="/home/administrator/images_eeha"/>
     <arg name="frame_rate" default="2"/>
 
   	<!-- <include file = "$(find camera_aravis)/launch/camera_aravis.launch"/> -->
 	<group ns="Fisheye">
-        <node pkg="multiespectral_fb" type="fisheye_basler_driver" name="frontal_camera" output="screen">
-            <param name="dataset_output_path" value="$(arg dataset_output_path)"/>  
+        <node pkg="multiespectral_acquire" type="basler_camera_handler" name="frontal_camera" output="screen">
             <param name="camera_ip" value="$(env FRONTAL_FISHEYE_IP)"/>
             <param name="image_topic" value="frontal_camera"/>
             <param name="frame_rate" value="$(arg frame_rate)"/>  
         </node>
 
-        <node pkg="multiespectral_fb" type="fisheye_basler_driver" name="rear_camera" output="screen">
-            <param name="dataset_output_path" value="$(arg dataset_output_path)"/>  
+        <node pkg="multiespectral_acquire" type="basler_camera_handler" name="rear_camera" output="screen">
             <param name="camera_ip" value="$(env REAR_FISHEYE_IP)"/>
             <param name="image_topic" value="rear_camera"/>
             <param name="frame_rate" value="$(arg frame_rate)"/>  

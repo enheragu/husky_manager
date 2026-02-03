@@ -1,0 +1,23 @@
+# Husky Manager - Sudoers configuration
+# Copy this file to /etc/sudoers.d/ to allow systemctl commands without password
+# 
+# Installation:
+#   sudo cp /path/to/husky-manager /etc/sudoers.d/husky-manager
+#   sudo chmod 440 /etc/sudoers.d/husky-manager
+#
+# Replace 'administrator' with the actual user running the web manager
+
+# Allow systemctl restart for Husky services without password
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart husky_base.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart sensors.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart localization.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart fisheye_cameras.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart multiespectral_cameras.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart ptp_cameras_lidar.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart ptp_phc2sys.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart conky.service
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart husky_web_manager.service
+
+# Also allow status checks (optional, but useful)
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *
+administrator ALL=(ALL) NOPASSWD: /usr/bin/systemctl is-active *

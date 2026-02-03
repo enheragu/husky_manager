@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Husky Manager - Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('manager.static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <img src="{{ url_for('manager.static', filename='arvc_logo.png') }}" alt="ARVC" class="logo-img">
+                <h1>Husky Manager</h1>
+            </div>
+            
+            <div class="header-info">
+                <!-- GUI Quick Access Buttons -->
+                <div class="header-nav">
+                    <button class="btn btn-gui" onclick="openGui('multiespectral')" title="Open Multiespectral Camera GUI">
+                        <span class="icon">📸</span>
+                        <span class="text">Multiespectral</span>
+                    </button>
+                    <button class="btn btn-gui" onclick="openGui('fisheye')" title="Open Fisheye Camera GUI">
+                        <span class="icon">🔲</span>
+                        <span class="text">Fisheye</span>
+                    </button>
+                </div>
+                
+                <span class="status-indicator" id="connection-status">
+                    <span class="dot"></span>
+                    <span class="text">Connecting...</span>
+                </span>
+                <span class="datetime" id="datetime"></span>
+            </div>
+        </header>
+
+        <!-- Main Content: Masonry-style layout -->
+        <!-- data-order define el orden horizontal: 1=arriba-izq, 2=arriba-centro, 3=arriba-der, 4=abajo-izq, etc. -->
+        <main class="main-masonry" id="main-container">
+            <!-- Processes -->
+            <section class="card" data-section="processes" data-order="1">
+                <div class="card-header">
+                    <h2><span class="icon">⚙️</span> Processes</h2>
+                </div>
+                <div class="card-body" id="processes-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Sensors -->
+            <section class="card" data-section="sensors" data-order="2">
+                <div class="card-header">
+                    <h2><span class="icon">📡</span> Sensors</h2>
+                </div>
+                <div class="card-body topics-grid" id="sensors-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Cameras -->
+            <section class="card" data-section="cameras" data-order="3">
+                <div class="card-header">
+                    <h2><span class="icon">📷</span> Cameras</h2>
+                </div>
+                <div class="card-body topics-grid" id="cameras-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Fusion -->
+            <section class="card" data-section="fusion" data-order="4">
+                <div class="card-header">
+                    <h2><span class="icon">🔗</span> Fusion</h2>
+                </div>
+                <div class="card-body topics-grid" id="fusion-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- Network -->
+            <section class="card" data-section="network" data-order="5">
+                <div class="card-header">
+                    <h2><span class="icon">🌐</span> Network</h2>
+                </div>
+                <div class="card-body" id="network-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+
+            <!-- System Setup -->
+            <section class="card" data-section="system" data-order="6">
+                <div class="card-header">
+                    <h2><span class="icon">🔧</span> System Setup</h2>
+                </div>
+                <div class="card-body" id="system-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Husky Manager v1.0 - ARVC/EEHA</p>
+        </footer>
+    </div>
+
+    <!-- Log Modal -->
+    <div class="modal-overlay" id="log-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="log-modal-title">Logs</h3>
+                <button class="modal-close" onclick="closeLogModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre id="log-modal-content">Loading...</pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-small" onclick="refreshLogs()">🔄 Refresh</button>
+                <button class="btn btn-small" onclick="closeLogModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="{{ url_for('manager.static', filename='app.js') }}"></script>
+</body>
+</html>
