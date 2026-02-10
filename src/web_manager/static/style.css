@@ -242,9 +242,14 @@ body {
     padding: var(--spacing-md) var(--spacing-lg);
     background: var(--background-light);
     border-radius: var(--border-radius);
-    transition: background 0.2s ease;
+    border-left: 3px solid var(--danger);
+    transition: all 0.2s ease;
     gap: var(--spacing-md);
     min-height: 42px;
+}
+
+.process-item.active {
+    border-left-color: var(--success);
 }
 
 .process-item:hover {
@@ -260,11 +265,9 @@ body {
 }
 
 .process-status {
-    width: 8px;
-    height: 8px;
-    min-width: 8px;
-    min-height: 8px;
-    border-radius: 50%;
+    font-size: 0.6rem;
+    padding: 1px 4px;
+    border-radius: 3px;
     background: var(--danger);
     flex-shrink: 0;
 }
@@ -329,6 +332,49 @@ body {
     border-top-color: var(--text);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+}
+
+.btn-stop {
+    background: var(--danger);
+    color: var(--text);
+}
+
+.btn-stop:hover {
+    background: #c0392b;
+}
+
+.btn-stop:disabled {
+    background: var(--surface-light);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-stop.loading {
+    pointer-events: none;
+}
+
+.btn-stop .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.btn-start {
+    background: var(--success);
+    color: var(--text);
+}
+
+.btn-start:hover {
+    background: #2d9a3e;
+}
+
+.btn-start:disabled {
+    background: var(--surface-light);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 @keyframes spin {

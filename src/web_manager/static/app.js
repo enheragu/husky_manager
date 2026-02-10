@@ -56,16 +56,41 @@ function setConnectionStatus(connected) {
 // API Functions
 // ============================================
 
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            cache: 'no-store'  // Force no caching
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        // Improve error message based on error type
+        if (error.name === 'AbortError') {
+            throw new Error(`Request timeout after ${timeout/1000}s`);
+        }
+        throw error;
+    }
+}
+
 async function fetchStatus() {
     try {
-        const response = await fetch(`${CONFIG.apiBase}/status`);
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/status`, {}, 8000);  // 8s timeout for status
         if (!response.ok) throw new Error('Network response was not ok');
         
         const data = await response.json();
         setConnectionStatus(true);
         return data;
     } catch (error) {
-        console.error('Failed to fetch status:', error);
+        // Only log if not a repeated disconnect
+        if (isConnected) {
+            console.error('Failed to fetch status:', error.message || error);
+        }
         setConnectionStatus(false);
         return null;
     }
@@ -73,10 +98,11 @@ async function fetchStatus() {
 
 async function relaunchProcess(name) {
     try {
-        const response = await fetch(`${CONFIG.apiBase}/processes/${encodeURIComponent(name)}/relaunch`, {
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/processes/${encodeURIComponent(name)}/relaunch`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        }, 30000);  // 30s timeout for restart
         
         const result = await response.json();
         
@@ -94,9 +120,33 @@ async function relaunchProcess(name) {
     }
 }
 
+async function stopProcess(name) {
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/processes/${encodeURIComponent(name)}/stop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        }, 90000);  // 90s timeout for graceful stop
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`${name} stopped successfully`, 'success');
+        } else {
+            showToast(`Failed to stop ${name}: ${result.message}`, 'error');
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('Failed to stop process:', error);
+        showToast(`Error stopping ${name}`, 'error');
+        return { success: false };
+    }
+}
+
 async function fetchLogs(name, lines = 150) {
     try {
-        const response = await fetch(`${CONFIG.apiBase}/processes/${encodeURIComponent(name)}/logs?lines=${lines}`);
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/processes/${encodeURIComponent(name)}/logs?lines=${lines}`);
         if (!response.ok) throw new Error('Network response was not ok');
         
         const data = await response.json();
@@ -109,9 +159,10 @@ async function fetchLogs(name, lines = 150) {
 
 async function toggleTopic(group, name) {
     try {
-        const response = await fetch(`${CONFIG.apiBase}/topics/${encodeURIComponent(group)}/${encodeURIComponent(name)}/toggle`, {
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/topics/${encodeURIComponent(group)}/${encodeURIComponent(name)}/toggle`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
         });
         
         const result = await response.json();
@@ -206,16 +257,25 @@ function renderProcesses(processes) {
     
     for (const [name, info] of Object.entries(processes)) {
         const statusClass = info.active ? 'active' : '';
-        const statusText = info.active ? 'Running' : 'Stopped';
+        const statusIcon = info.active ? '●' : '○';
         const statusTooltip = info.active 
             ? `${name} is running` 
             : `${name} is not running`;
         
+        // Determine button states and labels
+        const canStop = info.can_relaunch && info.active;
+        const canStart = info.can_relaunch && !info.active;
+        const startTitle = info.active ? `Restart ${name}` : `Start ${name}`;
+        const startIcon = info.active ? '🔄' : '▶️';
+        
+        // Use description for tooltip, fallback to name
+        const nameTooltip = info.description || name;
+        
         html += `
-            <div class="process-item">
+            <div class="process-item ${statusClass}">
                 <div class="process-info">
-                    <span class="process-status ${statusClass}" title="${statusTooltip}"></span>
-                    <span class="process-name" title="${name}">${name}</span>
+                    <span class="process-status ${statusClass}" title="${statusTooltip}">${statusIcon}</span>
+                    <span class="process-name" title="${nameTooltip}">${name}</span>
                 </div>
                 <div class="process-actions">
                     <button class="btn btn-logs" 
@@ -224,11 +284,17 @@ function renderProcesses(processes) {
                             ${!info.can_relaunch ? 'disabled' : ''}>
                         📋
                     </button>
-                    <button class="btn btn-relaunch" 
+                    <button class="btn btn-stop" 
+                            onclick="handleStop('${name}', this)"
+                            title="Stop ${name} (SIGINT)"
+                            ${!canStop ? 'disabled' : ''}>
+                        ⏹
+                    </button>
+                    <button class="btn btn-relaunch ${info.active ? '' : 'btn-start'}" 
                             onclick="handleRelaunch('${name}', this)"
-                            title="Restart ${name} service"
+                            title="${startTitle}"
                             ${!info.can_relaunch ? 'disabled' : ''}>
-                        🔄
+                        ${startIcon}
                     </button>
                 </div>
             </div>
@@ -454,6 +520,32 @@ async function handleRelaunch(name, button) {
     }, 1000);
 }
 
+async function handleStop(name, button) {
+    // Confirm stop action
+    if (!confirm(`Are you sure you want to stop "${name}"?`)) {
+        return;
+    }
+    
+    // Show loading state
+    button.classList.add('loading');
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<span class="spinner"></span>';
+    button.disabled = true;
+    
+    // Call API
+    await stopProcess(name);
+    
+    // Restore button (will be updated by next status poll)
+    setTimeout(() => {
+        button.classList.remove('loading');
+        button.innerHTML = originalContent;
+        // Don't re-enable - will be updated by renderProcesses based on active state
+    }, 1000);
+    
+    // Force immediate dashboard update
+    await updateDashboard();
+}
+
 // ============================================
 // Masonry Layout with Horizontal Order
 // ============================================
@@ -574,7 +666,7 @@ let guiConfig = {
 // Load GUI config from server
 async function loadGuiConfig() {
     try {
-        const response = await fetch(`${CONFIG.apiBase}/guis`);
+        const response = await fetchWithTimeout(`${CONFIG.apiBase}/guis`);
         if (response.ok) {
             guiConfig = await response.json();
         }

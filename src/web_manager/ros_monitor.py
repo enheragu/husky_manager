@@ -238,7 +238,8 @@ class ProcessMonitor:
                 status[name] = {
                     "active": is_active,
                     "service": config.get("service"),
-                    "can_relaunch": "service" in config
+                    "can_relaunch": "service" in config,
+                    "description": config.get("description", "")
                 }
             
             self.status_cache = status
@@ -282,6 +283,51 @@ class ProcessMonitor:
                 return {"success": False, "message": f"Failed to restart: {error_msg}"}
         except subprocess.TimeoutExpired:
             return {"success": False, "message": "Restart timed out"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def stop_process(self, name: str) -> Dict[str, Any]:
+        """Stop a process gracefully using systemctl stop.
+        
+        This allows ROS nodes to shutdown cleanly, calling their destructors
+        and releasing resources in an orderly fashion.
+        """
+        if name not in self.processes:
+            return {"success": False, "message": f"Unknown process: {name}"}
+        
+        config = self.processes[name]
+        service = config.get("service")
+        
+        if not service:
+            return {"success": False, "message": "No service configured for this process"}
+        
+        # Ensure service name ends with .service for sudoers compatibility
+        if not service.endswith('.service'):
+            service = f"{service}.service"
+        
+        try:
+            # Use systemctl stop with sudo (requires NOPASSWD in sudoers)
+            # systemctl stop sends SIGTERM first, allowing graceful shutdown
+            result = subprocess.run(
+                ["sudo", "-n", "systemctl", "stop", service],
+                capture_output=True,
+                text=True,
+                timeout=60  # Longer timeout for graceful shutdown
+            )
+            
+            if result.returncode == 0:
+                return {"success": True, "message": f"Service {service} stopped successfully"}
+            else:
+                error_msg = result.stderr.strip()
+                # Provide clearer message if it's a sudo permission issue
+                if "password is required" in error_msg or "a terminal is required" in error_msg:
+                    return {
+                        "success": False, 
+                        "message": f"Sudo permission required. Configure sudoers with: sudo visudo -f /etc/sudoers.d/husky-manager"
+                    }
+                return {"success": False, "message": f"Failed to stop: {error_msg}"}
+        except subprocess.TimeoutExpired:
+            return {"success": False, "message": "Stop timed out - process may be stuck"}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
@@ -380,6 +426,10 @@ class HuskyMonitor:
         """Relaunch a specific process."""
         return self.process_monitor.relaunch_process(name)
     
+    def stop_process(self, name: str) -> Dict[str, Any]:
+        """Stop a specific process gracefully."""
+        return self.process_monitor.stop_process(name)
+    
     def get_process_logs(self, name: str, lines: int = 100) -> Dict[str, Any]:
         """Get logs for a specific process from journalctl."""
         return self.process_monitor.get_logs(name, lines)
@@ -435,8 +485,10 @@ class HuskyMonitor:
             "OBC IP": os.environ.get("HUSKY_OBC_IP", "Not set"),
             "LIDAR IP": os.environ.get("HUSKY_LIDAR_IP", "Not set"),
             "LIDAR Dest IP": os.environ.get("HUSKY_LIDAR_IP_DEST", "Not set"),
+            "HUSKY Port": os.environ.get("HUSKY_PORT", "Not set"),
             "GPS Port": os.environ.get("HUSKY_GPS_PORT", "Not set"),
             "IMU Port": os.environ.get("HUSKY_IMU_PORT", "Not set"),
+            "DHT22 Port": os.environ.get("DHT22_PORT", "Not set"),
         }
         
         # Check PTP status

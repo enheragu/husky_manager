@@ -12,6 +12,7 @@ from std_msgs.msg import Bool
 # Try to import custom messages, fallback if not available
 try:
     from multiespectral_acquire.msg import ImageWithMetadata
+    from temperature_driver.msg import TemperatureHumidity
 except ImportError:
     from sensor_msgs.msg import Image as ImageWithMetadata
 
@@ -57,6 +58,17 @@ TOPIC_GROUPS = {
             "topic": "/imu/data",
             "show": "hz",
             "msg_type": Imu
+        },
+        "DHT22": {
+            "topic": "/dht22/data",
+            "show": "hz",
+            "msg_type": TemperatureHumidity,
+            "extra_fields": {
+                "Data": {
+                    "fields": ["temperature", "humidity"],
+                    "format": "{0:.2f} °C, {1:.2f} %"
+                }
+            }
         }
     },
     "cameras": {
@@ -122,27 +134,49 @@ TOPIC_GROUPS = {
 # Structure: {readable_name: {"command": process_command, "service": systemd_service_name}}
 # If "service" is provided, relaunch will use systemctl restart
 # Otherwise, it will try to launch using roslaunch
+# NOTE: Order matters! Processes are displayed in definition order.
+#       roscore must be first as it's required by all other ROS nodes.
 
 PROCESSES = {
+    "PTP Master": {
+        "command": "/usr/sbin/ptp4l",
+        "service": "ptp_cameras_lidar",
+        "description": "IEEE 1588 PTP daemon - Synchronizes hardware clocks of cameras and LIDAR."
+    },
+    "PTP Sync (phc2sys)": {
+        "command": "/usr/sbin/phc2sys",
+        "service": "ptp_phc2sys",
+        "description": "Synchronizes NIC PHC with system CLOCK_REALTIME."
+    },
+    "ROS Core": {
+        "command": "/opt/ros/noetic/bin/roscore",
+        "service": "roscore",
+        "description": "ROS Master - Central coordination of ROS nodes."
+    },
     "Husky Base": {
         "command": "/usr/bin/python3 /opt/ros/noetic/bin/roslaunch husky_base base.launch",
-        "service": "husky_base"
+        "service": "husky_base",
+        "description": "Husky base driver - Motor control, teleoperation and wheel odometry."
     },
     "Husky Sensors": {
         "command": "/usr/bin/python3 /opt/ros/noetic/bin/roslaunch husky_manager sensors_manager.launch",
-        "service": "sensors"
+        "service": "sensors",
+        "description": "LIDAR Ouster, GPS and IMU."
     },
     "Husky Localization": {
         "command": "/usr/bin/python3 /opt/ros/noetic/bin/roslaunch husky_manager localization_manager.launch",
-        "service": "localization"
+        "service": "localization",
+        "description": "EKF fusion of odometry, IMU, and GPS."
     },
     "Multiespectral Cameras": {
         "command": "/usr/bin/python3 /opt/ros/noetic/bin/roslaunch multiespectral_fb multiespectral.launch",
-        "service": "multiespectral_cameras"
+        "service": "multiespectral_cameras",
+        "description": "Visible and LWIR cameras with synchronization buffer (LIDAR synced and cut to FOV and DHT22 sensor)."
     },
     "Fisheye Cameras": {
         "command": "/usr/bin/python3 /opt/ros/noetic/bin/roslaunch husky_manager fisheye_cameras.launch",
-        "service": "fisheye_cameras"
+        "service": "fisheye_cameras",
+        "description": "Front and rear fisheye cameras with synced LIDAR."
     }
 }
 

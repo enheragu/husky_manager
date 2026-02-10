@@ -7,13 +7,23 @@ Provides a web interface for monitoring ROS topics and processes.
 
 import os
 import threading
-from flask import Flask, Blueprint, jsonify, render_template, request
+from flask import Flask, Blueprint, jsonify, render_template, request, after_this_request
 
 # Blueprint for the manager routes (enables /manager prefix)
 manager_bp = Blueprint('manager', __name__, 
                        url_prefix='/manager',
                        template_folder='templates',
                        static_folder='static')
+
+
+@manager_bp.after_request
+def add_no_cache_headers(response):
+    """Add headers to prevent caching of API responses."""
+    if request.path.startswith('/manager/api'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 # Global monitor instance (set during initialization)
 _monitor = None
@@ -100,6 +110,20 @@ def api_relaunch_process(name):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@manager_bp.route('/api/processes/<name>/stop', methods=['POST'])
+def api_stop_process(name):
+    """Stop a specific process gracefully (allows ROS nodes to shutdown cleanly)."""
+    if _monitor is None:
+        return jsonify({"error": "Monitor not initialized"}), 503
+    
+    try:
+        result = _monitor.stop_process(name)
+        status_code = 200 if result.get("success") else 500
+        return jsonify(result), status_code
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @manager_bp.route('/api/processes/<name>/logs')
 def api_process_logs(name):
     """Get logs for a specific process."""
@@ -122,7 +146,10 @@ def api_toggle_topic(group, name):
         return jsonify({"error": "Monitor not initialized"}), 503
     
     try:
-        data = request.get_json() or {}
+        # Handle both empty body and JSON body safely
+        data = {}
+        if request.content_length and request.content_length > 0:
+            data = request.get_json(silent=True) or {}
         value = data.get('value', None)
         result = _monitor.publish_bool_topic(group, name, value)
         return jsonify(result)
