@@ -1,1 +1,16 @@
-*__pycache__*
+__pycache__/
+*.pyc
+build/
+devel/
+logs/
+.catkin_tools/
+.catkin_workspace
+*.bag
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+CATKIN_IGNORE
+.vscode/
+.venv/

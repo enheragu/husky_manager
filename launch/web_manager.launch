@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Husky Web Manager Launch File
+  Starts the Flask-based web monitoring interface.
+  
+  Access the interface at: http://localhost:5000/manager
+  
+  Parameters:
+    - host: Server host address (default: 0.0.0.0)
+    - port: Server port (default: 5000)
+-->
+<launch>
+    <!-- Web Manager Node -->
+    <node name="husky_web_manager" 
+          pkg="husky_manager" 
+          type="web_manager_node.py" 
+          output="screen"
+          respawn="false">
+        
+        <!-- Server configuration (puerto 5050 para evitar colisiones) -->
+        <param name="host" value="0.0.0.0" />
+        <param name="port" value="5050" />
+    </node>
+</launch>

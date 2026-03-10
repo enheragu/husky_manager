@@ -1,30 +1,30 @@
 # Husky Web Manager
 
-Interfaz web para monitorizar y gestionar el sistema Husky ROS.
+Web interface for monitoring and managing the Husky ROS system.
 
-## Configuración de Sudoers (requerido para relanzar servicios)
+## Sudoers Setup (required for service restart)
 
-Para poder reiniciar servicios desde la interfaz web sin que pida contraseña:
+To allow the web interface to restart services without a password prompt:
 
 ```bash
-# Copiar el archivo de configuración de sudoers
+# Copy the sudoers configuration file
 sudo cp src/web_manager/sudoers.d/husky-manager /etc/sudoers.d/husky-manager
 
-# Establecer permisos correctos (IMPORTANTE)
+# Set correct permissions (IMPORTANT)
 sudo chmod 440 /etc/sudoers.d/husky-manager
 
-# Verificar que la sintaxis es correcta
+# Verify correct syntax
 sudo visudo -c
 ```
 
-> **Nota**: Si el usuario que ejecuta el web manager no es `administrator`, edita el archivo `/etc/sudoers.d/husky-manager` y cambia `administrator` por el usuario correcto.
+> **Note**: If the user running the web manager is not `administrator`, edit `/etc/sudoers.d/husky-manager` and replace `administrator` with the correct username.
 
-## Uso
+## Usage
 
-El web manager se inicia automáticamente con el servicio `husky_web_manager.service` o manualmente:
+The web manager starts automatically via `husky_web_manager.service`, or manually:
 
 ```bash
 rosrun husky_manager web_manager_node.py
 ```
 
-Accede a la interfaz en: `http://<IP_HUSKY>:5050/manager`
+Access the interface at: `http://<HUSKY_IP>:5050/manager`

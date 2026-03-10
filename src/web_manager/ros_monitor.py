@@ -478,6 +478,10 @@ class HuskyMonitor:
     def get_system_info(self) -> Dict[str, Any]:
         """Get system configuration info (IPs, ports, PTP status)."""
         import os
+
+        temp_c = "N/A"
+        with open('/sys/class/thermal/thermal_zone0/temp') as f:
+            temp_c = int(f.read()) / 1000
         
         # Environment variables
         env_vars = {
@@ -489,8 +493,8 @@ class HuskyMonitor:
             "GPS Port": os.environ.get("HUSKY_GPS_PORT", "Not set"),
             "IMU Port": os.environ.get("HUSKY_IMU_PORT", "Not set"),
             "DHT22 Port": os.environ.get("DHT22_PORT", "Not set"),
+            "CPU temperature": f"{temp_c:.1f}°C",
         }
-        
         # Check PTP status
         ptp_active = False
         ptp_offsets = {}
@@ -524,7 +528,8 @@ class HuskyMonitor:
         return {
             "env": env_vars,
             "ptp_active": ptp_active,
-            "ptp_offsets": ptp_offsets
+            "ptp_offsets": ptp_offsets,
+
         }
     
     def get_full_status(self) -> Dict[str, Any]:
