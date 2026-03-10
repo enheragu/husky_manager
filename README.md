@@ -8,6 +8,8 @@ Flask web application (port 5050) for monitoring and controlling all robot subsy
 
 <p align="center">
   <img src="media/desktop.png" height="300" alt="Web dashboard — desktop view" title="Desktop View of control GUI: process, sensor and camera cards"/>
+</p>
+<p align="center">
   <img src="media/phone_1.png" height="300" alt="Web dashboard — phone process view" title="Phone View of control GUI: process management"/>
   <img src="media/phone_2.png" height="300" alt="Web dashboard — phone sensor view" title="Phone View of control GUI: sensor monitoring"/>
   <img src="media/phone_3.png" height="300" alt="Web dashboard — phone camera view" title="Phone View of control GUI: camera monitoring"/>
