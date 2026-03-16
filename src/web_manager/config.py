@@ -72,23 +72,33 @@ TOPIC_GROUPS = {
         }
     },
     "cameras": {
-        "Mult. Visible": {
+        "Mult. Visible (main)": {
             "topic": "/Multiespectral/visible_camera/image_with_metadata_sync",
             "show": "hz",
             "msg_type": ImageWithMetadata
         },
-        "Mult. LWIR": {
+        "Mult. LWIR (follower)": {
             "topic": "/Multiespectral/lwir_camera/image_with_metadata_sync",
             "show": "hz",
             "msg_type": ImageWithMetadata
         },
-        "Fish. Frontal": {
+        "Mult. LWIR (RAW)": {
+            "topic": "/Multiespectral/lwir_camera/image_with_metadata",
+            "show": "hz",
+            "msg_type": ImageWithMetadata
+        },
+        "Fish. Frontal (main)": {
             "topic": "/Fisheye/frontal_camera/image_with_metadata_sync",
             "show": "hz",
             "msg_type": ImageWithMetadata
         },
-        "Fish. Rear": {
+        "Fish. Rear (follower)": {
             "topic": "/Fisheye/rear_camera/image_with_metadata_sync",
+            "show": "hz",
+            "msg_type": ImageWithMetadata
+        },
+        "Fish. Rear (RAW)": {
+            "topic": "/Fisheye/rear_camera/image_with_metadata",
             "show": "hz",
             "msg_type": ImageWithMetadata
         },
